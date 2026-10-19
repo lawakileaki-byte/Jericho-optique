@@ -379,8 +379,8 @@ const COL_MAP = {
   'p2monture': 'p2monture', 'p2caracteristiqueVerre': 'p2caracteristiqueverre',
   'caracteristiqueVerre': 'caracteristiqueverre',
   'laboratoireAutre': 'laboratoireautre',
-  'montantAchatSpray': 'montantachatspray', 'montantVenteEtui': 'montantventetui', 'montantVenteEssuieVerre': 'montantventeessuieverre',
-  'prixVenteMontureAcc': 'prixventemontureacc', 'remiseAcc': 'remiseacc',
+  // montantAchatSpray, montantVenteEtui, montantVenteEssuieVerre, prixVenteMontureAcc, remiseAcc
+  // → colonnes absentes de Supabase : sérialisées dans le champ 'versements' (type acc)
   'prixVenteMonture': 'prixventemonture', 'prixVenteLentilles': 'prixventelentilles',
   'prixVenteLentilles2e': 'prixventelentilles2e', 'prixVenteMonture2e': 'prixventemonture2e',
   'prixVenteTotalSansRemise': 'prixventetotalsansremise',
@@ -414,6 +414,19 @@ function denormalizeRow(row) {
       try{ out[key] = JSON.parse(v); }catch(e){ out[key] = []; }
     } else {
       out[key] = v;
+    }
+  }
+  // Restaurer les champs Accessoires sérialisés dans versements (type:'acc')
+  if(out.versements){
+    let vers = out.versements;
+    if(typeof vers === 'string'){ try{ vers = JSON.parse(vers); }catch(e){ vers = []; } }
+    const accEntry = Array.isArray(vers) ? vers.find(v=>v.type==='acc') : null;
+    if(accEntry){
+      if(accEntry.spray   !== undefined) out.montantAchatSpray      = String(accEntry.spray);
+      if(accEntry.etui    !== undefined) out.montantVenteEtui        = String(accEntry.etui);
+      if(accEntry.essuie  !== undefined) out.montantVenteEssuieVerre = String(accEntry.essuie);
+      if(accEntry.monture !== undefined) out.prixVenteMontureAcc     = String(accEntry.monture);
+      if(accEntry.remise  !== undefined) out.remiseAcc               = String(accEntry.remise);
     }
   }
   return out;
@@ -7029,8 +7042,8 @@ function attachModalEvents(){
       laboratoire: val('v-labo') || (existing&&existing.laboratoire)||'',
       laboratoireAutre: val('v-labo-autre').trim() || (existing&&existing.laboratoireAutre)||'',
       caracteristiqueVerre: val('v-carac-verre').trim() || (existing&&existing.caracteristiqueVerre)||'',
-      montantAchatSpray: val('v-spray'), montantVenteEtui: val('v-etui'), montantVenteEssuieVerre: val('v-essuie'),
-      prixVenteMontureAcc: val('v-monture-acc'), remiseAcc: val('v-remise-acc'),
+      // montantAchatSpray, montantVenteEtui, montantVenteEssuieVerre, prixVenteMontureAcc, remiseAcc
+      // → sérialisés dans versements[type:'acc'] — pas de colonnes Supabase pour ces champs
       prixVenteMonture: val('v-prix-monture'), prixVenteLentilles: val('v-prix-lentilles'),
       prixVenteLentilles2e: val('v-prix-lentilles-2e'), prixVenteMonture2e: val('v-prix-monture-2e'),
       prixVenteTotalSansRemise: val('v-prix-total'), remise: val('v-remise'),
@@ -7044,11 +7057,11 @@ function attachModalEvents(){
         }
         if(typeArt==='Accessoires'){
           const enc = val('v-acc-encaisse'); const mode = val('v-acc-mode'); const datep = val('v-acc-date-paiement');
-          // Calculer et stocker le total pour pouvoir l'afficher même si les sous-champs sont vides
+          // Stocker les sous-champs Accessoires dans versements (colonnes absentes de Supabase)
           const spray=Number(val('v-spray'))||0, etui=Number(val('v-etui'))||0, essuie=Number(val('v-essuie'))||0;
           const monture=Number(val('v-monture-acc'))||0, remise=Number(val('v-remise-acc'))||0;
           const accTotal = Math.max(0, monture - remise + spray + etui + essuie);
-          return JSON.stringify([{type:'acc', encaisse: Number(enc)||0, mode: mode||'Espèces', date: datep||todayISO(), total: accTotal}]);
+          return JSON.stringify([{type:'acc', encaisse: Number(enc)||0, mode: mode||'Espèces', date: datep||todayISO(), total: accTotal, spray, etui, essuie, monture, remise}]);
         }
         const vj=document.getElementById('v-versements-json')?.value||'[]'; return vj;
       })(),
@@ -7063,11 +7076,19 @@ function attachModalEvents(){
       commercial: (existing && existing.commercial) || state.commercial,
       dateCreation: (existing && existing.dateCreation) || todayISO()
     };
+    // Enrichir obj en mémoire avec les sous-champs Accessoires (tirés de versements, non envoyés à Supabase)
+    if(obj.typeArticle==='Accessoires'){
+      let vers=[]; try{vers=JSON.parse(obj.versements||'[]');}catch(e){}
+      const a=Array.isArray(vers)?vers.find(v=>v.type==='acc'):null;
+      if(a){ obj.montantAchatSpray=String(a.spray||0); obj.montantVenteEtui=String(a.etui||0); obj.montantVenteEssuieVerre=String(a.essuie||0); obj.prixVenteMontureAcc=String(a.monture||0); obj.remiseAcc=String(a.remise||0); }
+    }
     const idx = DB.ventes.findIndex(v=>v.id===id);
     if(idx>=0) DB.ventes[idx]=obj; else DB.ventes.unshift(obj);
 
+    // Préparer le payload Supabase sans les champs non existants en base
+    const {montantAchatSpray:_s, montantVenteEtui:_e, montantVenteEssuieVerre:_ev, prixVenteMontureAcc:_p, remiseAcc:_r, ...objSupabase} = obj;
     try{
-      await apiUpsert('ventes', obj);
+      await apiUpsert('ventes', objSupabase);
 
       // Synchronise avec la fiche client : retrouve ou crée le client, ajoute l'achat à son historique
       let client = null;
