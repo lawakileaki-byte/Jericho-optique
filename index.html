@@ -108,6 +108,9 @@
 
   /* Bouton déconnexion mobile : visible uniquement sur mobile */
   #mobile-logout-panel{display:block}
+
+  /* Analyse : grilles 2 colonnes → 1 colonne sur mobile */
+  .an-two-col{grid-template-columns:1fr !important;}
 }
 
 /* Sur desktop, masquer le panneau de déconnexion mobile */
@@ -381,7 +384,6 @@ const COL_MAP = {
   'laboratoireAutre': 'laboratoireautre',
   // montantAchatSpray, montantVenteEtui, montantVenteEssuieVerre, prixVenteMontureAcc, remiseAcc
   // → colonnes absentes de Supabase : sérialisées dans le champ 'versements' (type acc)
-  'prixVenteMonture': 'prixventemonture',
   'prixVenteMonture': 'prixventemonture', 'prixVenteLentilles': 'prixventelentilles',
   'prixVenteLentilles2e': 'prixventelentilles2e', 'prixVenteMonture2e': 'prixventemonture2e',
   'prixVenteTotalSansRemise': 'prixventetotalsansremise',
@@ -417,6 +419,19 @@ function denormalizeRow(row) {
       out[key] = v;
     }
   }
+  // Restaurer les champs Accessoires sérialisés dans versements (type:'acc')
+  if(out.versements){
+    let vers = out.versements;
+    if(typeof vers === 'string'){ try{ vers = JSON.parse(vers); }catch(e){ vers = []; } }
+    const accEntry = Array.isArray(vers) ? vers.find(v=>v.type==='acc') : null;
+    if(accEntry){
+      if(accEntry.spray   !== undefined) out.montantAchatSpray      = String(accEntry.spray);
+      if(accEntry.etui    !== undefined) out.montantVenteEtui        = String(accEntry.etui);
+      if(accEntry.essuie  !== undefined) out.montantVenteEssuieVerre = String(accEntry.essuie);
+      if(accEntry.monture !== undefined) out.prixVenteMontureAcc     = String(accEntry.monture);
+      if(accEntry.remise  !== undefined) out.remiseAcc               = String(accEntry.remise);
+    }
+  }
   return out;
 }
 
@@ -438,6 +453,7 @@ function toSupabase(row) {
   const DATE_KEYS = /date|rdv/i;
   for (const [k, v] of Object.entries(row)) {
     if(SUPABASE_EXCLUDED_FIELDS.has(k)) continue; // champ sans colonne Supabase
+    // Utiliser COL_MAP si disponible, sinon lowercase
     const colName = COL_MAP[k] || k.toLowerCase();
     const isDate = DATE_KEYS.test(k);
     out[colName] = (isDate && v === '') ? null : v;
@@ -3899,7 +3915,7 @@ function renderJournee(){
     }
     return `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:180px;">
+      <div style="flex:1;min-width:140px;">
         <div style="font-weight:600;font-size:14px;">${escapeHtml(client)}</div>
         <div style="font-size:12px;color:#888;margin-top:2px;">
           ${escapeHtml(v.typeArticle||'')} · ${escapeHtml(v.businessUnit||'')}
@@ -5679,7 +5695,7 @@ function renderAnalyse(){
     }).join('');
     const legend = data.map((d,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px;"><span style="width:12px;height:12px;border-radius:2px;background:${COLORS[i%COLORS.length]};flex-shrink:0;"></span><span style="color:#555;">${escapeHtml(d[0])}</span><span style="margin-left:auto;font-weight:600;">${Math.round(d[1]/total*100)}%</span></div>`).join('');
     return `<div style="display:flex;align-items:center;gap:20px;">
-      <svg viewBox="0 0 140 140" style="width:140px;height:140px;flex-shrink:0;">${slices}</svg>
+      <svg viewBox="0 0 140 140" style="width:min(140px,35vw);height:min(140px,35vw);flex-shrink:0;">${slices}</svg>
       <div style="flex:1;">${legend}</div>
     </div>`;
   }
@@ -5892,7 +5908,7 @@ function renderAnalyse(){
   </div>
 
   <!-- LIGNE 2 : TYPE + BOUTIQUE -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="an-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
     <div class="panel">
       <h3 style="margin-bottom:14px;">Répartition par type d'article</h3>
       ${svgDonut(typesOrder)}
@@ -5923,13 +5939,13 @@ function renderAnalyse(){
         const maxCa = apporteursOrder[0][1].ca||1;
         const pct = Math.round(data.ca/maxCa*100);
         return `<div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px;">
-            <div style="display:flex;align-items:center;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
               <span style="width:28px;height:28px;border-radius:50%;background:#1B2340;color:#C8830A;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml(nom.slice(0,2).toUpperCase())}</span>
-              <span style="font-weight:600;color:#1B2340;">${escapeHtml(nom)}</span>
-              <span style="font-size:11px;color:#9AA0B2;">${data.nb} vente${data.nb>1?'s':''}</span>
+              <span style="font-weight:600;color:#1B2340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nom)}</span>
+              <span style="font-size:11px;color:#9AA0B2;white-space:nowrap;flex-shrink:0;">${data.nb} vente${data.nb>1?'s':''}</span>
             </div>
-            <span style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;">${fmtFCFA(data.ca)}</span>
+            <span style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;">${fmtFCFA(data.ca)}</span>
           </div>
           <div style="background:#E2E5EC;border-radius:4px;height:8px;overflow:hidden;">
             <div style="background:linear-gradient(90deg,#1B2340,#C8830A);height:100%;width:${pct}%;border-radius:4px;transition:width .5s;"></div>
@@ -5976,7 +5992,7 @@ function renderAnalyse(){
     <h3 style="margin-bottom:18px;">🎯 Mes objectifs ${anneeN}</h3>
     ${!user?`<div style="border:2px dashed #E2E5EC;text-align:center;padding:28px;color:#9AA0B2;border-radius:8px;"><div style="font-size:32px;margin-bottom:8px;">🎯</div><div style="font-weight:600;margin-bottom:4px;">Aucun objectif défini</div><div style="font-size:13px;">La directrice peut fixer vos objectifs dans Gestion comptes.</div></div>`:`
     <!-- KPI tiles objectifs -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
+    <div class="an-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
       <!-- Mois en cours -->
       <div style="background:#F5F6F8;border:1px solid #E2E5EC;border-radius:10px;padding:16px 18px;">
         <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C8830A;margin-bottom:6px;">${MOIS[moisIdx].toUpperCase()} ${anneeN}</div>
@@ -7034,8 +7050,8 @@ function attachModalEvents(){
       laboratoire: val('v-labo') || (existing&&existing.laboratoire)||'',
       laboratoireAutre: val('v-labo-autre').trim() || (existing&&existing.laboratoireAutre)||'',
       caracteristiqueVerre: val('v-carac-verre').trim() || (existing&&existing.caracteristiqueVerre)||'',
-      montantAchatSpray: val('v-spray'), montantVenteEtui: val('v-etui'), montantVenteEssuieVerre: val('v-essuie'),
-      prixVenteMontureAcc: val('v-monture-acc'), remiseAcc: val('v-remise-acc'),
+      // montantAchatSpray, montantVenteEtui, montantVenteEssuieVerre, prixVenteMontureAcc, remiseAcc
+      // → sérialisés dans versements[type:'acc'] — pas de colonnes Supabase pour ces champs
       prixVenteMonture: val('v-prix-monture'), prixVenteLentilles: val('v-prix-lentilles'),
       prixVenteLentilles2e: val('v-prix-lentilles-2e'), prixVenteMonture2e: val('v-prix-monture-2e'),
       prixVenteTotalSansRemise: val('v-prix-total'), remise: val('v-remise'),
@@ -7049,11 +7065,11 @@ function attachModalEvents(){
         }
         if(typeArt==='Accessoires'){
           const enc = val('v-acc-encaisse'); const mode = val('v-acc-mode'); const datep = val('v-acc-date-paiement');
-          // Calculer et stocker le total pour pouvoir l'afficher même si les sous-champs sont vides
+          // Stocker les sous-champs Accessoires dans versements (colonnes absentes de Supabase)
           const spray=Number(val('v-spray'))||0, etui=Number(val('v-etui'))||0, essuie=Number(val('v-essuie'))||0;
           const monture=Number(val('v-monture-acc'))||0, remise=Number(val('v-remise-acc'))||0;
           const accTotal = Math.max(0, monture - remise + spray + etui + essuie);
-          return JSON.stringify([{type:'acc', encaisse: Number(enc)||0, mode: mode||'Espèces', date: datep||todayISO(), total: accTotal}]);
+          return JSON.stringify([{type:'acc', encaisse: Number(enc)||0, mode: mode||'Espèces', date: datep||todayISO(), total: accTotal, spray, etui, essuie, monture, remise}]);
         }
         const vj=document.getElementById('v-versements-json')?.value||'[]'; return vj;
       })(),
@@ -7068,11 +7084,19 @@ function attachModalEvents(){
       commercial: (existing && existing.commercial) || state.commercial,
       dateCreation: (existing && existing.dateCreation) || todayISO()
     };
+    // Enrichir obj en mémoire avec les sous-champs Accessoires (tirés de versements, non envoyés à Supabase)
+    if(obj.typeArticle==='Accessoires'){
+      let vers=[]; try{vers=JSON.parse(obj.versements||'[]');}catch(e){}
+      const a=Array.isArray(vers)?vers.find(v=>v.type==='acc'):null;
+      if(a){ obj.montantAchatSpray=String(a.spray||0); obj.montantVenteEtui=String(a.etui||0); obj.montantVenteEssuieVerre=String(a.essuie||0); obj.prixVenteMontureAcc=String(a.monture||0); obj.remiseAcc=String(a.remise||0); }
+    }
     const idx = DB.ventes.findIndex(v=>v.id===id);
     if(idx>=0) DB.ventes[idx]=obj; else DB.ventes.unshift(obj);
 
+    // Préparer le payload Supabase sans les champs non existants en base
+    const {montantAchatSpray:_s, montantVenteEtui:_e, montantVenteEssuieVerre:_ev, prixVenteMontureAcc:_p, remiseAcc:_r, ...objSupabase} = obj;
     try{
-      await apiUpsert('ventes', obj);
+      await apiUpsert('ventes', objSupabase);
 
       // Synchronise avec la fiche client : retrouve ou crée le client, ajoute l'achat à son historique
       let client = null;
