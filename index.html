@@ -7505,25 +7505,22 @@ async function soumettreRDV() {
 <!-- ===== SERVICE WORKER REGISTRATION ===== -->
 <script>
 if ('serviceWorker' in navigator) {
-  // Désinstaller tout ancien Service Worker pour éviter les problèmes de cache
+  // Désinstaller TOUS les Service Workers et vider leurs caches
   navigator.serviceWorker.getRegistrations().then(regs => {
     for (const reg of regs) {
       reg.unregister();
-      console.log('[PWA] Service Worker désinstallé (cache forcé)');
+      console.log('[PWA] Service Worker désinstallé');
     }
   });
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Jericho-optique5/sw.js', { scope: '/Jericho-optique5/' })
-      .then(reg => {
-        console.log('[PWA] Service Worker enregistré ✅', reg.scope);
-        // Forcer la mise à jour immédiate
-        reg.update();
-        setInterval(() => reg.update(), 3600000);
-      })
-      .catch(err => {
-        console.warn('[PWA] Service Worker non enregistré:', err);
-      });
-  });
+  // Vider tous les caches du navigateur
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      for (const name of names) {
+        caches.delete(name);
+        console.log('[PWA] Cache supprimé:', name);
+      }
+    });
+  }
 
   // Prompt d'installation Android
   let deferredPrompt = null;
