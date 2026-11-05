@@ -46,7 +46,7 @@
 
   /* Zone principale : scroll, pas de débordement */
   .main{
-    order:1;padding:14px 12px 74px;
+    order:1;padding:14px 8px 74px;
     overflow-y:auto;overflow-x:hidden;
     flex:1;min-height:0;
     -webkit-overflow-scrolling:touch;
@@ -67,7 +67,7 @@
   .kpi .lbl{font-size:11px}
 
   /* Panneaux */
-  .panel{padding:16px 12px;margin-bottom:14px}
+  .panel{padding:14px 10px;margin-bottom:14px}
   .panel h3{font-size:15px;margin-bottom:12px}
 
   /* Toolbar : champs pleins + boutons full width */
@@ -111,6 +111,13 @@
 
   /* Analyse : grilles 2 colonnes → 1 colonne sur mobile */
   .an-two-col{grid-template-columns:1fr !important;}
+  /* Apporteurs : lignes responsives */
+  .ap-row{flex-wrap:wrap !important;}
+  .ap-montant{font-size:12px !important;}
+  /* an2-kpis : 2 colonnes */
+  .an2-kpis{grid-template-columns:1fr 1fr !important;}
+  .an2-kpi{padding:10px 12px !important;}
+  .an2-v{font-size:18px !important;}
 }
 
 /* Sur desktop, masquer le panneau de déconnexion mobile */
@@ -133,7 +140,7 @@
 .an2-pill.on{background:var(--pc);border-color:var(--pc);color:#fff}
 .an2-in{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:5px 9px;font-size:13px;font-family:inherit;color-scheme:dark}
 .an2-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
-.an2-kpi,.an2-card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px 16px;min-width:0;overflow:hidden}
+.an2-kpi,.an2-card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px 16px;min-width:0;overflow:visible}
 .an2-kpi.gold{border-top:3px solid var(--gold)}.an2-kpi.warn{border-top:3px solid var(--warn)}.an2-kpi.good{border-top:3px solid var(--good)}
 .an2-k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .an2-v{font-size:22px;font-weight:700;color:var(--fg);line-height:1.25}
@@ -265,7 +272,7 @@ function an2Update(){
     const ord=Object.entries(parAp).sort((a,b)=>b[1].ca-a[1].ca);
     const caTotal=ord.reduce((s,[,d])=>s+d.ca,0);
     if(ord.length===0){apDiv.innerHTML=`<div style="text-align:center;padding:20px 0;color:#9AA0B2;font-size:13px;">Aucune vente via apporteur sur cette période</div>`}
-    else{apDiv.innerHTML=`<div style="font-size:12px;color:#9AA0B2;margin-bottom:10px;">${ventesAp.length} vente(s) · ${fmtFCFA(caTotal)} total</div><div style="display:flex;flex-direction:column;gap:10px;">${ord.map(([nom,d])=>{const maxC=ord[0][1].ca||1,pct=Math.round(d.ca/maxC*100);return`<div><div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px;gap:8px;"><div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;"><span style="width:26px;height:26px;border-radius:50%;background:#1B2340;color:#C8830A;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${escapeHtml(nom.slice(0,2).toUpperCase())}</span><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nom)}</span><span style="font-size:11px;color:#9AA0B2;white-space:nowrap;flex-shrink:0;">${d.nb} vente${d.nb>1?'s':''}</span></div><span style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;">${fmtFCFA(d.ca)}</span></div><div style="background:#E2E5EC;border-radius:4px;height:7px;overflow:hidden;"><div style="background:linear-gradient(90deg,#1B2340,#C8830A);height:100%;width:${pct}%;border-radius:4px;"></div></div></div>`}).join('')}</div>`}
+    else{apDiv.innerHTML=`<div style="font-size:12px;color:#9AA0B2;margin-bottom:10px;">${ventesAp.length} vente(s) · ${fmtFCFA(caTotal)} total</div><div style="display:flex;flex-direction:column;gap:10px;">${ord.map(([nom,d])=>{const maxC=ord[0][1].ca||1,pct=Math.round(d.ca/maxC*100);return`<div><div class="ap-row" style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px;gap:6px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;"><span style="width:26px;height:26px;border-radius:50%;background:#1B2340;color:#C8830A;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${escapeHtml(nom.slice(0,2).toUpperCase())}</span><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(nom)}</span><span style="font-size:10px;color:#9AA0B2;white-space:nowrap;flex-shrink:0;">${d.nb}v</span></div><span class="ap-montant" style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;font-size:13px;">${fmtFCFA(d.ca)}</span></div><div style="background:#E2E5EC;border-radius:4px;height:7px;overflow:hidden;"><div style="background:linear-gradient(90deg,#1B2340,#C8830A);height:100%;width:${pct}%;border-radius:4px;"></div></div></div>`}).join('')}</div>`}
   }
 }
 function renderAnalyseDirection(){an2EnsureObj();const t=an2Today();
@@ -5928,7 +5935,7 @@ function renderAnalyse(){
 
   <!-- APPORTEURS D'AFFAIRES -->
   <div class="panel">
-    <h3 style="margin-bottom:16px;">🤝 Apporteurs d'affaires <span style="font-size:13px;font-weight:400;color:#9AA0B2;margin-left:8px;">${ventesApporteurs.length} vente(s) · ${fmtFCFA(caApporteurTotal)} total</span></h3>
+    <h3 style="margin-bottom:16px;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px;">🤝 Apporteurs d'affaires <span style="font-size:12px;font-weight:400;color:#9AA0B2;">${ventesApporteurs.length} vente(s) · ${fmtFCFA(caApporteurTotal)} total</span></h3>
     ${apporteursOrder.length === 0 ? `
     <div style="text-align:center;padding:24px 0;color:#9AA0B2;font-size:14px;">
       <div style="font-size:28px;margin-bottom:8px;">🤝</div>
@@ -5939,13 +5946,13 @@ function renderAnalyse(){
         const maxCa = apporteursOrder[0][1].ca||1;
         const pct = Math.round(data.ca/maxCa*100);
         return `<div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px;gap:8px;">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-              <span style="width:28px;height:28px;border-radius:50%;background:#1B2340;color:#C8830A;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml(nom.slice(0,2).toUpperCase())}</span>
-              <span style="font-weight:600;color:#1B2340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nom)}</span>
-              <span style="font-size:11px;color:#9AA0B2;white-space:nowrap;flex-shrink:0;">${data.nb} vente${data.nb>1?'s':''}</span>
+          <div class="ap-row" style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px;gap:6px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">
+              <span style="width:26px;height:26px;border-radius:50%;background:#1B2340;color:#C8830A;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${escapeHtml(nom.slice(0,2).toUpperCase())}</span>
+              <span style="font-weight:600;color:#1B2340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(nom)}</span>
+              <span style="font-size:10px;color:#9AA0B2;white-space:nowrap;flex-shrink:0;">${data.nb}v</span>
             </div>
-            <span style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;">${fmtFCFA(data.ca)}</span>
+            <span class="ap-montant" style="font-weight:700;color:#C8830A;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;font-size:13px;">${fmtFCFA(data.ca)}</span>
           </div>
           <div style="background:#E2E5EC;border-radius:4px;height:8px;overflow:hidden;">
             <div style="background:linear-gradient(90deg,#1B2340,#C8830A);height:100%;width:${pct}%;border-radius:4px;transition:width .5s;"></div>
